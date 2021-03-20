@@ -4,10 +4,34 @@ import { Client } from "../entities/client";
 import { Moderator } from "../entities/moderator";
 import { Operation } from "../entities/operation";
 import type { User } from "../entities/user";
-import type { RoleToUser } from "../entities/role-to-user";
+import { RoleToUser } from "../entities/role-to-user";
+import {
+  RoleToAdminOperations,
+  RoleToClientOperations,
+  RoleToModeratorOperations
+} from "../entities/role-to-user-operations";
+
 
 export default class UserService {
   private users: readonly User[] = [];
+
+  private readonly roleToAdminOperations: RoleToAdminOperations = {
+    [Role.ADMIN]: [Operation.UPDATE_TO_MODERATOR],
+    [Role.MODERATOR]: [Operation.UPDATE_TO_MODERATOR, Operation.UPDATE_TO_CLIENT],
+    [Role.CLIENT]: [Operation.UPDATE_TO_MODERATOR],
+  } as const;
+
+  private readonly roleToModeratorOperations: RoleToModeratorOperations = {
+    [Role.ADMIN]: [],
+    [Role.MODERATOR]: [Operation.UPDATE_TO_CLIENT],
+    [Role.CLIENT]: [Operation.UPDATE_TO_MODERATOR],
+  } as const;
+
+  private readonly roleToClientOperations: RoleToClientOperations = {
+    [Role.ADMIN]: [],
+    [Role.MODERATOR]: [],
+    [Role.CLIENT]: [],
+  } as const;
 
   async getAllUsers(): Promise<readonly User[]> {
     if (this.users.length !== 0) {
@@ -34,28 +58,28 @@ export default class UserService {
     return this.users;
   }
 
-  getAvailableOperations(user: User, currentUser: User): Operation[] {
+  getAvailableOperations(user: User, currentUser: User): ReadonlyArray<Operation> {
     if (currentUser instanceof Admin) {
-      if (user instanceof Admin || user instanceof Client) {
-        return [Operation.UPDATE_TO_MODERATOR];
-      }
-
-      return [Operation.UPDATE_TO_CLIENT, Operation.UPDATE_TO_ADMIN];
+      return this.getAvailableAdminOperations(user.role);
     }
 
     if (currentUser instanceof Moderator) {
-      if (user instanceof Client) {
-        return [Operation.UPDATE_TO_MODERATOR];
-      }
-
-      if (user instanceof Moderator) {
-        return [Operation.UPDATE_TO_CLIENT];
-      }
-
-      return [];
+      return this.getAvailableModeratorOperations(user.role);
     }
 
-    return [];
+    return this.getAvailableClientOperations(user.role);
+  }
+
+  getAvailableAdminOperations<R extends Role>(role: R) {
+    return this.roleToAdminOperations[role];
+  }
+
+  getAvailableModeratorOperations<R extends Role>(role: R) {
+    return this.roleToModeratorOperations[role];
+  }
+
+  getAvailableClientOperations<R extends Role>(role: R) {
+    return this.roleToClientOperations[role];
   }
 
   getConstructorByRole(role: Role) {
