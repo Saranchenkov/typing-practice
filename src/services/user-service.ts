@@ -6,29 +6,25 @@ import { Operation } from "../entities/operation";
 import type { User } from "../entities/user";
 import { RoleToUser } from "../entities/role-to-user";
 
-const ADMIN_OPERATIONS_CONFIGURATION = {
-  [Role.ADMIN]: [Operation.UPDATE_TO_MODERATOR],
-  [Role.MODERATOR]: [Operation.UPDATE_TO_MODERATOR, Operation.UPDATE_TO_CLIENT],
-  [Role.CLIENT]: [Operation.UPDATE_TO_MODERATOR],
+const AVAILABLE_OPERATIONS = {
+  [Role.CLIENT]: {
+    [Role.ADMIN]: [],
+    [Role.MODERATOR]: [],
+    [Role.CLIENT]: []
+  },
+  [Role.MODERATOR]: {
+    [Role.ADMIN]: [],
+    [Role.MODERATOR]: [Operation.UPDATE_TO_CLIENT],
+    [Role.CLIENT]: [Operation.UPDATE_TO_MODERATOR],
+  },
+  [Role.ADMIN]: {
+    [Role.ADMIN]: [Operation.UPDATE_TO_MODERATOR],
+    [Role.MODERATOR]: [Operation.UPDATE_TO_CLIENT, Operation.UPDATE_TO_ADMIN],
+    [Role.CLIENT]: [Operation.UPDATE_TO_MODERATOR]
+  }
 } as const;
 
-type RoleToAdminOperations = typeof ADMIN_OPERATIONS_CONFIGURATION;
-
-const MODERATOR_OPERATIONS_CONFIGURATION = {
-  [Role.ADMIN]: [],
-  [Role.MODERATOR]: [Operation.UPDATE_TO_CLIENT],
-  [Role.CLIENT]: [Operation.UPDATE_TO_MODERATOR],
-} as const;
-
-type RoleToModeratorOperations = typeof MODERATOR_OPERATIONS_CONFIGURATION;
-
-const CLIENT_OPERATIONS_CONFIGURATION = {
-  [Role.ADMIN]: [],
-  [Role.MODERATOR]: [],
-  [Role.CLIENT]: [],
-} as const;
-
-type RoleToClientOperations = typeof CLIENT_OPERATIONS_CONFIGURATION;
+type AVAILABLE_OPERATIONS = typeof AVAILABLE_OPERATIONS;
 
 export default class UserService {
   private users: readonly User[] = [];
@@ -58,28 +54,11 @@ export default class UserService {
     return this.users;
   }
 
-  getAvailableOperations(user: User, currentUser: User): ReadonlyArray<Operation> {
-    if (currentUser instanceof Admin) {
-      return this.getAvailableAdminOperations(user.role);
-    }
-
-    if (currentUser instanceof Moderator) {
-      return this.getAvailableModeratorOperations(user.role);
-    }
-
-    return this.getAvailableClientOperations(user.role);
-  }
-
-  getAvailableAdminOperations<R extends Role>(role: R): RoleToAdminOperations[R] {
-    return ADMIN_OPERATIONS_CONFIGURATION[role];
-  }
-
-  getAvailableModeratorOperations<R extends Role>(role: R): RoleToModeratorOperations[R] {
-    return MODERATOR_OPERATIONS_CONFIGURATION[role];
-  }
-
-  getAvailableClientOperations<R extends Role>(role: R): RoleToClientOperations[R] {
-    return CLIENT_OPERATIONS_CONFIGURATION[role];
+  getAvailableOperations<
+      U1 extends User,
+      U2 extends User,
+      >(user: U1, currentUser: U2) {
+    return AVAILABLE_OPERATIONS[currentUser.role][user.role] as AVAILABLE_OPERATIONS[U2["role"]][U1["role"]];
   }
 
   getConstructorByRole(role: Role) {

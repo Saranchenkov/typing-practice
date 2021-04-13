@@ -11,7 +11,7 @@ type ActionsProps = {
 };
 
 export default function Actions({ user, currentUser, onAction }: ActionsProps) {
-  const operations = useOperations(user, currentUser);
+  const operations: ReadonlyArray<Operation> = useOperations(user, currentUser);
   const menu = (
     <Menu>
       {operations.map((operation, key) => (
